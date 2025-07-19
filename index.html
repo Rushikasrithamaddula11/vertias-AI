@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatic ML Model Trainer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.2.0/tf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .upload-section {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .config-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .config-group {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .config-group h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .train-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .train-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .train-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .download-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .download-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .data-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @media (max-width: 768px) {
+            .config-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Automatic ML Model Trainer</h1>
+            <p>Upload CSV files and automatically train machine learning models</p>
+        </div>
+
+        <div class="main-card">
+            <div class="upload-section">
+                <h3>📁 Upload Training Data</h3>
+                <p>Upload a CSV file containing your training data</p>
+                <input type="file" id="fileInput" class="file-input" accept=".csv" />
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    Choose CSV File
+                </button>
+                <div id="fileInfo" style="margin-top: 15px;"></div>
+                <div id="dataPreview" class="data-preview" style="display: none;"></div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-group">
+                    <h3>🎯 Target Configuration</h3>
+                    <div class="form-group">
+                        <label for="targetColumn">Target Column:</label>
+                        <select id="targetColumn">
+                            <option value="">Select target column</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemType">Problem Type:</label>
+                        <select id="problemType">
+                            <option value="classification">Classification</option>
+                            <option value="regression">Regression</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <h3>🔧 Algorithm Configuration</h3>
+                    <div class="form-group">
+                        <label for="algorithm">Algorithm:</label>
+                        <select id="algorithm">
+                            <option value="neural_network">Neural Network</option>
+                            <option value="linear_regression">Linear Regression</option>
+                            <option value="logistic_regression">Logistic Regression</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trainSplit">Training Split (%):</label>
+                        <input type="range" id="trainSplit" min="60" max="90" value="80" />
+                        <span id="trainSplitValue">80%</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="epochs">Epochs:</label>
+                        <input type="number" id="epochs" value="100" min="10" max="1000" />
+                    </div>
+                </div>
+            </div>
+
+            <button class="train-btn" id="trainBtn" onclick="trainModel()" disabled>
+                🚀 Train Model
+            </button>
+
+            <div class="progress-section" id="progressSection">
+                <h3>Training Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="progressText">Preparing data...</div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h3>📊 Training Results</h3>
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h4>Training Accuracy</h4>
+                        <div class="metric-value" id="trainAccuracy">--</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Validation Accuracy</h4>
+                        <div class="metric-value" id="valAccuracy">--</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Training Loss</h4>
+                        <div class="metric-value" id="trainLoss">--</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Validation Loss</h4>
+                        <div class="metric-value" id="valLoss">--</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="trainingChart"></canvas>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn" onclick="downloadModel()">
+                        💾 Download Model
+                    </button>
+                    <button class="download-btn" onclick="downloadResults()">
+                        📋 Download Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawData = null;
+        let processedData = null;
+        let model = null;
+        let trainHistory = null;
+        let scaler = null;
+
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('trainSplit').addEventListener('input', function() {
+            document.getElementById('trainSplitValue').textContent = this.value + '%';
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>File:</strong> ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+                </div>
+            `;
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    rawData = results.data;
+                    processData();
+                },
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true
+            });
+        }
+
+        function processData() {
+            if (!rawData || rawData.length === 0) return;
+
+            // Show data preview
+            showDataPreview();
+            
+            // Populate target column dropdown
+            const targetSelect = document.getElementById('targetColumn');
+            targetSelect.innerHTML = '<option value="">Select target column</option>';
+            
+            const columns = Object.keys(rawData[0]);
+            columns.forEach(col => {
+                const option = document.createElement('option');
+                option.value = col;
+                option.textContent = col;
+                targetSelect.appendChild(option);
+            });
+
+            // Enable train button
+            document.getElementById('trainBtn').disabled = false;
+        }
+
+        function showDataPreview() {
+            const preview = document.getElementById('dataPreview');
+            const columns = Object.keys(rawData[0]);
+            
+            let html = '<table class="data-table"><thead><tr>';
+            columns.forEach(col => html += `<th>${col}</th>`);
+            html += '</tr></thead><tbody>';
+            
+            // Show first 5 rows
+            for (let i = 0; i < Math.min(5, rawData.length); i++) {
+                html += '<tr>';
+                columns.forEach(col => {
+                    const value = rawData[i][col];
+                    html += `<td>${value !== null && value !== undefined ? value : 'N/A'}</td>`;
+                });
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+            preview.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        async function trainModel() {
+            const targetColumn = document.getElementById('targetColumn').value;
+            const algorithm = document.getElementById('algorithm').value;
+            const problemType = document.getElementById('problemType').value;
+            const trainSplit = parseInt(document.getElementById('trainSplit').value) / 100;
+            const epochs = parseInt(document.getElementById('epochs').value);
+
+            if (!targetColumn) {
+                alert('Please select a target column');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('trainBtn').disabled = true;
+
+            try {
+                // Prepare data
+                updateProgress(10, 'Preparing data...');
+                const { features, labels, featureNames } = prepareData(targetColumn);
+                
+                // Split data
+                updateProgress(20, 'Splitting data...');
+                const splitIndex = Math.floor(features.length * trainSplit);
+                const trainFeatures = features.slice(0, splitIndex);
+                const trainLabels = labels.slice(0, splitIndex);
+                const valFeatures = features.slice(splitIndex);
+                const valLabels = labels.slice(splitIndex);
+
+                // Create and train model
+                updateProgress(30, 'Creating model...');
+                model = createModel(algorithm, problemType, trainFeatures[0].length);
+                
+                updateProgress(40, 'Training model...');
+                await trainModelWithData(model, trainFeatures, trainLabels, valFeatures, valLabels, epochs);
+
+                updateProgress(100, 'Training complete!');
+                showResults();
+
+            } catch (error) {
+                console.error('Training error:', error);
+                alert('Training failed: ' + error.message);
+            } finally {
+                document.getElementById('trainBtn').disabled = false;
+            }
+        }
+
+        function prepareData(targetColumn) {
+            const features = [];
+            const labels = [];
+            const featureNames = [];
+
+            // Get feature column names (exclude target)
+            const allColumns = Object.keys(rawData[0]);
+            allColumns.forEach(col => {
+                if (col !== targetColumn) {
+                    featureNames.push(col);
+                }
+            });
+
+            // Process each row
+            rawData.forEach(row => {
+                const featureRow = [];
+                featureNames.forEach(col => {
+                    const value = row[col];
+                    featureRow.push(typeof value === 'number' ? value : 0);
+                });
+                
+                features.push(featureRow);
+                
+                const labelValue = row[targetColumn];
+                labels.push(typeof labelValue === 'number' ? labelValue : 0);
+            });
+
+            // Normalize features
+            const normalizedFeatures = normalizeFeatures(features);
+
+            return {
+                features: normalizedFeatures,
+                labels: labels,
+                featureNames: featureNames
+            };
+        }
+
+        function normalizeFeatures(features) {
+            const numFeatures = features[0].length;
+            const means = new Array(numFeatures).fill(0);
+            const stds = new Array(numFeatures).fill(1);
+
+            // Calculate means
+            features.forEach(row => {
+                row.forEach((val, idx) => {
+                    means[idx] += val;
+                });
+            });
+            means.forEach((_, idx) => {
+                means[idx] /= features.length;
+            });
+
+            // Calculate standard deviations
+            features.forEach(row => {
+                row.forEach((val, idx) => {
+                    stds[idx] += Math.pow(val - means[idx], 2);
+                });
+            });
+            stds.forEach((_, idx) => {
+                stds[idx] = Math.sqrt(stds[idx] / features.length);
+                if (stds[idx] === 0) stds[idx] = 1; // Avoid division by zero
+            });
+
+            // Store scaler for later use
+            scaler = { means, stds };
+
+            // Normalize features
+            return features.map(row => 
+                row.map((val, idx) => (val - means[idx]) / stds[idx])
+            );
+        }
+
+        function createModel(algorithm, problemType, inputSize) {
+            let model;
+
+            switch (algorithm) {
+                case 'neural_network':
+                    model = tf.sequential({
+                        layers: [
+                            tf.layers.dense({
+                                units: Math.max(16, Math.floor(inputSize / 2)),
+                                activation: 'relu',
+                                inputShape: [inputSize]
+                            }),
+                            tf.layers.dropout({ rate: 0.2 }),
+                            tf.layers.dense({
+                                units: Math.max(8, Math.floor(inputSize / 4)),
+                                activation: 'relu'
+                            }),
+                            tf.layers.dense({
+                                units: problemType === 'classification' ? 1 : 1,
+                                activation: problemType === 'classification' ? 'sigmoid' : 'linear'
+                            })
+                        ]
+                    });
+                    break;
+
+                case 'linear_regression':
+                    model = tf.sequential({
+                        layers: [
+                            tf.layers.dense({
+                                units: 1,
+                                inputShape: [inputSize],
+                                activation: 'linear'
+                            })
+                        ]
+                    });
+                    break;
+
+                case 'logistic_regression':
+                    model = tf.sequential({
+                        layers: [
+                            tf.layers.dense({
+                                units: 1,
+                                inputShape: [inputSize],
+                                activation: 'sigmoid'
+                            })
+                        ]
+                    });
+                    break;
+            }
+
+            const optimizer = tf.train.adam(0.001);
+            const loss = problemType === 'classification' ? 'binaryCrossentropy' : 'meanSquaredError';
+            const metrics = problemType === 'classification' ? ['accuracy'] : ['mse'];
+
+            model.compile({
+                optimizer: optimizer,
+                loss: loss,
+                metrics: metrics
+            });
+
+            return model;
+        }
+
+        async function trainModelWithData(model, trainFeatures, trainLabels, valFeatures, valLabels, epochs) {
+            const trainXs = tf.tensor2d(trainFeatures);
+            const trainYs = tf.tensor2d(trainLabels, [trainLabels.length, 1]);
+            const valXs = tf.tensor2d(valFeatures);
+            const valYs = tf.tensor2d(valLabels, [valLabels.length, 1]);
+
+            const history = await model.fit(trainXs, trainYs, {
+                epochs: epochs,
+                validationData: [valXs, valYs],
+                batchSize: 32,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        const progress = 40 + (epoch / epochs) * 50;
+                        updateProgress(progress, `Epoch ${epoch + 1}/${epochs} - Loss: ${logs.loss.toFixed(4)}`);
+                    }
+                }
+            });
+
+            trainHistory = history.history;
+
+            // Clean up tensors
+            trainXs.dispose();
+            trainYs.dispose();
+            valXs.dispose();
+            valYs.dispose();
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function showResults() {
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            const lastEpoch = trainHistory.loss.length - 1;
+            
+            // Update metrics
+            document.getElementById('trainLoss').textContent = trainHistory.loss[lastEpoch].toFixed(4);
+            document.getElementById('valLoss').textContent = trainHistory.val_loss[lastEpoch].toFixed(4);
+            
+            if (trainHistory.accuracy) {
+                document.getElementById('trainAccuracy').textContent = (trainHistory.accuracy[lastEpoch] * 100).toFixed(2) + '%';
+                document.getElementById('valAccuracy').textContent = (trainHistory.val_accuracy[lastEpoch] * 100).toFixed(2) + '%';
+            } else {
+                document.getElementById('trainAccuracy').textContent = 'N/A';
+                document.getElementById('valAccuracy').textContent = 'N/A';
+            }
+
+            // Create training chart
+            createTrainingChart();
+        }
+
+        function createTrainingChart() {
+            const ctx = document.getElementById('trainingChart').getContext('2d');
+            
+            const epochs = trainHistory.loss.map((_, i) => i + 1);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: epochs,
+                    datasets: [{
+                        label: 'Training Loss',
+                        data: trainHistory.loss,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: 'Validation Loss',
+                        data: trainHistory.val_loss,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Training Progress'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Loss'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Epoch'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function downloadModel() {
+            if (!model) {
+                alert('No model to download');
+                return;
+            }
+
+            try {
+                await model.save('downloads://ml-model');
+                alert('Model downloaded successfully!');
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Download failed: ' + error.message);
+            }
+        }
+
+        function downloadResults() {
+            if (!trainHistory) {
+                alert('No results to download');
+                return;
+            }
+
+            const results = {
+                trainingHistory: trainHistory,
+                modelConfig: {
+                    algorithm: document.getElementById('algorithm').value,
+                    problemType: document.getElementById('problemType').value,
+                    epochs: document.getElementById('epochs').value,
+                    trainSplit: document.getElementById('trainSplit').value
+                },
+                scaler: scaler
+            };
+
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'training-results.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
